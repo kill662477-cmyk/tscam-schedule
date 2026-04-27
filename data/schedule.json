@@ -1,6 +1,6 @@
 {
   "adminPasswordHash": "5c06e46c5e47cfacad16ce1e37f17c09fdbc7072c567613e0b8112173f688a65",
-  "updatedAt": "2026-04-27T03:19:23.472Z",
+  "updatedAt": "2026-04-27T03:22:25.812Z",
   "data": {
     "weekly": {
       "kim": [
@@ -23,7 +23,7 @@
       ]
     },
     "today": {
-      "schedule": "ASL 응원야방 및 중계",
+      "schedule": "ASL 응원야방 및 중계11",
       "mention": "햇살(장기수감)"
     },
     "monthly": {
