@@ -1,6 +1,6 @@
 {
   "adminPasswordHash": "5c06e46c5e47cfacad16ce1e37f17c09fdbc7072c567613e0b8112173f688a65",
-  "updatedAt": "2026-04-27T23:24:30.495Z",
+  "updatedAt": "2026-04-27T23:24:55.451Z",
   "data": {
     "weekly": {
       "kim": [
@@ -23,7 +23,7 @@
       ]
     },
     "today": {
-      "schedule": "ASL 중계방송 신상문 VS 윤수철",
+      "schedule": "유스영입 발표?(낭니?)\nASL 중계방송 신상문 VS 윤수철",
       "mention": "햇살(장기)"
     },
     "monthly": {
