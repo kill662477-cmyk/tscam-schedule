@@ -1,134 +1,83 @@
-const crypto = require('crypto');
+const crypto = require("crypto");
 
-const DEFAULT_PATH = 'data/schedule.json';
-const DEFAULT_BRANCH = 'main';
-const DEFAULT_HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4'; // 1234
-
-function json(statusCode, body) {
-  return {
-    statusCode,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS'
-    },
-    body: JSON.stringify(body)
-  };
+function sha256(text) {
+  return crypto.createHash("sha256").update(String(text || "")).digest("hex");
 }
 
-function sha256(value = '') {
-  return crypto.createHash('sha256').update(String(value)).digest('hex');
-}
-
-function requireEnv(name) {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} 환경변수가 없습니다.`);
-  return value;
-}
-
-function safeScheduleData(input) {
-  const weekly = input?.weekly || {};
-  const today = input?.today || {};
-  const monthly = input?.monthly || {};
-  const normArray = (arr) => Array.from({ length: 7 }, (_, i) => String(Array.isArray(arr) ? (arr[i] || '') : ''));
-  const cleanMonthly = {};
-  if (monthly && typeof monthly === 'object') {
-    for (const [key, value] of Object.entries(monthly)) {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(key) && String(value || '').trim()) {
-        cleanMonthly[key] = String(value).trim();
-      }
-    }
+exports.handler = async function(event) {
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: JSON.stringify({ error: "Method Not Allowed" }) };
   }
-  return {
-    weekly: {
-      kim: normArray(weekly.kim),
-      lee: normArray(weekly.lee)
-    },
-    today: {
-      schedule: String(today.schedule || '').trim(),
-      mention: String(today.mention || '').trim()
-    },
-    monthly: cleanMonthly
-  };
-}
-
-async function githubFetch(url, token, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(options.headers || {})
-    }
-  });
-  const text = await res.text();
-  let parsed = {};
-  try { parsed = text ? JSON.parse(text) : {}; } catch (_) { parsed = { raw: text }; }
-  if (!res.ok) {
-    throw new Error(parsed.message || `GitHub API 오류 (${res.status})`);
-  }
-  return parsed;
-}
-
-exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return json(200, { ok: true });
-  if (event.httpMethod !== 'POST') return json(405, { error: 'POST 요청만 가능합니다.' });
 
   try {
-    const body = JSON.parse(event.body || '{}');
-    const password = String(body.password || '');
-    const newPassword = body.newPassword ? String(body.newPassword) : '';
-    const nextData = safeScheduleData(body.data || {});
+    const token = process.env.GITHUB_TOKEN;
+    const owner = process.env.GITHUB_OWNER;
+    const repo = process.env.GITHUB_REPO;
+    const branch = process.env.GITHUB_BRANCH || "main";
+    const path = "data/schedule.json";
 
-    if (!password) return json(400, { error: '비밀번호를 입력하세요.' });
-    if (newPassword && newPassword.length < 4) return json(400, { error: '새 비밀번호는 4자 이상이어야 합니다.' });
-
-    const token = requireEnv('GITHUB_TOKEN');
-    const owner = requireEnv('GITHUB_OWNER');
-    const repo = requireEnv('GITHUB_REPO');
-    const branch = process.env.GITHUB_BRANCH || DEFAULT_BRANCH;
-    const filePath = process.env.SCHEDULE_PATH || DEFAULT_PATH;
-    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
-
-    let currentSha = null;
-    let currentPayload = { adminPasswordHash: DEFAULT_HASH, data: nextData };
-
-    try {
-      const current = await githubFetch(`${apiUrl}?ref=${encodeURIComponent(branch)}`, token);
-      currentSha = current.sha;
-      const decoded = Buffer.from(current.content || '', 'base64').toString('utf8');
-      currentPayload = JSON.parse(decoded || '{}');
-    } catch (err) {
-      if (!String(err.message).includes('Not Found')) throw err;
+    if (!token || !owner || !repo) {
+      return { statusCode: 500, body: JSON.stringify({ error: "Netlify 환경변수(GITHUB_TOKEN/OWNER/REPO)가 필요합니다." }) };
     }
 
-    const currentHash = currentPayload.adminPasswordHash || DEFAULT_HASH;
+    const body = JSON.parse(event.body || "{}");
+    const password = body.password || "";
+    const nextData = body.data;
+    const newPassword = body.newPassword || "";
+
+    if (!nextData || typeof nextData !== "object") {
+      return { statusCode: 400, body: JSON.stringify({ error: "저장할 data가 없습니다." }) };
+    }
+
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+    const headers = {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/vnd.github+json",
+      "User-Agent": "tscam-schedule-netlify-function"
+    };
+
+    const getRes = await fetch(apiUrl, { headers });
+    if (!getRes.ok) {
+      const txt = await getRes.text();
+      return { statusCode: 500, body: JSON.stringify({ error: `GitHub 파일 읽기 실패: ${txt}` }) };
+    }
+
+    const fileInfo = await getRes.json();
+    const currentText = Buffer.from(fileInfo.content || "", "base64").toString("utf8");
+    let currentJson = {};
+    try { currentJson = JSON.parse(currentText); } catch (_) {}
+
+    const currentHash = currentJson.adminPasswordHash || sha256(process.env.ADMIN_PASSWORD || "1234");
     if (sha256(password) !== currentHash) {
-      return json(401, { error: '비밀번호가 틀렸습니다.' });
+      return { statusCode: 401, body: JSON.stringify({ error: "비밀번호가 틀렸습니다." }) };
     }
 
-    const nextPayload = {
+    const nextJson = {
       adminPasswordHash: newPassword ? sha256(newPassword) : currentHash,
       updatedAt: new Date().toISOString(),
       data: nextData
     };
 
-    const content = Buffer.from(JSON.stringify(nextPayload, null, 2), 'utf8').toString('base64');
-    const message = newPassword ? 'Update schedule and admin password' : 'Update schedule data';
+    const content = Buffer.from(JSON.stringify(nextJson, null, 2), "utf8").toString("base64");
 
-    const putBody = { message, content, branch };
-    if (currentSha) putBody.sha = currentSha;
-
-    const saved = await githubFetch(apiUrl, token, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(putBody)
+    const putRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        message: "Update schedule.json",
+        content,
+        sha: fileInfo.sha,
+        branch
+      })
     });
 
-    return json(200, { ok: true, commit: saved.commit?.sha || null, updatedAt: nextPayload.updatedAt });
+    if (!putRes.ok) {
+      const txt = await putRes.text();
+      return { statusCode: 500, body: JSON.stringify({ error: `GitHub 저장 실패: ${txt}` }) };
+    }
+
+    return { statusCode: 200, body: JSON.stringify({ ok: true, updatedAt: nextJson.updatedAt }) };
   } catch (err) {
-    return json(500, { error: err.message || '저장 중 오류가 발생했습니다.' });
+    return { statusCode: 500, body: JSON.stringify({ error: err.message || "저장 실패" }) };
   }
 };

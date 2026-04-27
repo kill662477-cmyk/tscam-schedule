@@ -74,7 +74,7 @@ html,body{max-width:100%;overflow-x:hidden}
     </div>
   </section>
   <section class="card calendar-card">
-    <div class="calendar-head"><h2>월간 일정표</h2></div>
+    <div class="calendar-head"><h2 id="calendarTitle">월간 일정표 (2026년 4월)</h2></div>
     <div class="week-labels"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
     <div class="calendar" id="calendar"></div>
   </section>
@@ -115,7 +115,14 @@ let view=new Date(todayReal.getFullYear(),todayReal.getMonth(),1);
 let selectedDate=dateKey(todayReal.getFullYear(),todayReal.getMonth()+1,todayReal.getDate());
 let editCtx=null;
 const DEFAULT_DATA={weekly:{kim:['방송','방송','휴방','방송','콘텐츠','방송','이벤트'],lee:['방송','휴방','방송','방송','콘텐츠','방송','방송']},today:{schedule:'',mention:''},monthly:{}};
-let data=structuredClone(DEFAULT_DATA);
+function cloneObj(obj){return JSON.parse(JSON.stringify(obj));}
+let data=cloneObj(DEFAULT_DATA);
+const $=id=>document.getElementById(id);
+const heroMonth=$('heroMonth'), calendarTitle=$('calendarTitle'), weeklyGrid=$('weeklyGrid'), todayDate=$('todayDate'), todaySchedule=$('todaySchedule'), todayMention=$('todayMention'), calendar=$('calendar');
+const modalBack=$('modalBack'), modalTitle=$('modalTitle'), modalSub=$('modalSub'), modalText=$('modalText'), cancelBtn=$('cancelBtn'), clearBtn=$('clearBtn'), applyBtn=$('applyBtn');
+const passwordBack=$('passwordBack'), adminPassword=$('adminPassword'), passwordCancelBtn=$('passwordCancelBtn'), passwordSaveBtn=$('passwordSaveBtn');
+const changePasswordBtn=$('changePasswordBtn'), saveBtn=$('saveBtn'), prevBtn=$('prevBtn'), todayBtn=$('todayBtn'), nextBtn=$('nextBtn');
+const changePasswordBack=$('changePasswordBack'), currentPassword=$('currentPassword'), newPassword=$('newPassword'), newPasswordConfirm=$('newPasswordConfirm'), changePasswordCancelBtn=$('changePasswordCancelBtn'), changePasswordApplyBtn=$('changePasswordApplyBtn');
 function pad(n){return String(n).padStart(2,'0')}
 function dateKey(y,m,d){return `${y}-${pad(m)}-${pad(d)}`}
 function dot(k){return k.replaceAll('-','.')}
@@ -124,8 +131,8 @@ function cleanLoaded(raw){
   const src=raw && raw.data ? raw.data : raw;
   return {
     weekly:{
-      kim:Array.isArray(src?.weekly?.kim)?src.weekly.kim.slice(0,7):structuredClone(DEFAULT_DATA.weekly.kim),
-      lee:Array.isArray(src?.weekly?.lee)?src.weekly.lee.slice(0,7):structuredClone(DEFAULT_DATA.weekly.lee)
+      kim:Array.isArray(src?.weekly?.kim)?src.weekly.kim.slice(0,7):cloneObj(DEFAULT_DATA.weekly.kim),
+      lee:Array.isArray(src?.weekly?.lee)?src.weekly.lee.slice(0,7):cloneObj(DEFAULT_DATA.weekly.lee)
     },
     today:{schedule:src?.today?.schedule||'',mention:src?.today?.mention||''},
     monthly:src?.monthly && typeof src.monthly==='object'?src.monthly:{}
@@ -147,7 +154,7 @@ function isKoreanNationalDay(m,d,y=view.getFullYear()){
   return fixed.includes(md) || (byYear[y]||[]).includes(md);
 }
 function showToast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1700)}
-function renderHeader(){heroMonth.textContent=`${view.getFullYear()}년 ${view.getMonth()+1}월`}
+function renderHeader(){const label=view.getFullYear()+"년 "+(view.getMonth()+1)+"월";heroMonth.textContent=label;if(calendarTitle)calendarTitle.textContent="월간 일정표 ("+label+")";}
 function renderWeekly(){weeklyGrid.innerHTML='';[['kim','김윤환'],['lee','이경민']].forEach(([id,name])=>{const p=document.createElement('div');p.className='person';p.innerHTML=`<div class="person-top"><div class="person-name">${name}</div></div><div class="week-days">${dows.map((d,i)=>{const cls=i===0?'sun':i===6?'sat':'';return `<div class="daybox" data-person="${id}" data-day="${i}"><div class="dow ${cls}">${d}</div><div class="day-text fit-text">${esc(data.weekly[id][i]||'')}</div></div>`}).join('')}</div>`;weeklyGrid.appendChild(p)});document.querySelectorAll('.daybox').forEach(el=>el.onclick=()=>openModal({type:'weekly',person:el.dataset.person,day:Number(el.dataset.day)}));}
 function renderToday(){todayDate.textContent=dot(selectedDate);todaySchedule.textContent=data.today.schedule||'등록된 일정 없음';todayMention.textContent=data.today.mention||'등록된 언급노(휴방) 없음'}
 function renderCalendar(){renderHeader();calendar.innerHTML='';const y=view.getFullYear(),m=view.getMonth()+1;const first=new Date(y,m-1,1).getDay();const last=new Date(y,m,0).getDate();for(let i=0;i<first;i++){const e=document.createElement('div');e.className='cal-day empty';calendar.appendChild(e)}for(let d=1;d<=last;d++){const k=dateKey(y,m,d);const dow=new Date(y,m-1,d).getDay();const numCls=isKoreanNationalDay(m,d,y)?'holiday':dow===0?'sun':dow===6?'sat':'';const el=document.createElement('div');el.className='cal-day'+(k===selectedDate?' selected':'');el.innerHTML=`<div class="num ${numCls}">${d}</div><div class="cal-text fit-text">${esc(data.monthly[k]||'')}</div>`;el.onclick=()=>{selectedDate=k;renderToday();renderCalendar();openModal({type:'monthly',date:k});};calendar.appendChild(el)}requestAnimationFrame(autoFitTexts)}
@@ -173,5 +180,6 @@ changePasswordCancelBtn.onclick=()=>changePasswordBack.style.display='none';chan
 async function doChangePassword(){const cur=currentPassword.value;const next=newPassword.value.trim();const confirm=newPasswordConfirm.value.trim();if(!next){showToast('새 비밀번호를 입력하세요');return}if(next.length<4){showToast('비밀번호는 4자 이상');return}if(next!==confirm){showToast('새 비밀번호가 일치하지 않습니다');return}try{changePasswordApplyBtn.disabled=true;changePasswordApplyBtn.textContent='변경 중';await saveToServer(cur,next);changePasswordBack.style.display='none';showToast('비밀번호 변경 완료')}catch(e){showToast(e.message)}finally{changePasswordApplyBtn.disabled=false;changePasswordApplyBtn.textContent='변경'}}
 changePasswordApplyBtn.onclick=doChangePassword;[currentPassword,newPassword,newPasswordConfirm].forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter')doChangePassword()}));
 loadSchedule();
+</script>
 </body>
 </html>
