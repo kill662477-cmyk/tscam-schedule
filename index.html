@@ -117,6 +117,12 @@ let editCtx=null;
 const DEFAULT_DATA={weekly:{kim:['방송','방송','휴방','방송','콘텐츠','방송','이벤트'],lee:['방송','휴방','방송','방송','콘텐츠','방송','방송']},today:{schedule:'',mention:''},monthly:{}};
 function cloneObj(obj){return JSON.parse(JSON.stringify(obj));}
 let data=cloneObj(DEFAULT_DATA);
+let adminPasswordHash='';
+async function sha256Client(text){
+  const enc=new TextEncoder().encode(String(text||''));
+  const buf=await crypto.subtle.digest('SHA-256',enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 const $=id=>document.getElementById(id);
 const heroMonth=$('heroMonth'), calendarTitle=$('calendarTitle'), weeklyGrid=$('weeklyGrid'), todayDate=$('todayDate'), todaySchedule=$('todaySchedule'), todayMention=$('todayMention'), calendar=$('calendar');
 const modalBack=$('modalBack'), modalTitle=$('modalTitle'), modalSub=$('modalSub'), modalText=$('modalText'), cancelBtn=$('cancelBtn'), clearBtn=$('clearBtn'), applyBtn=$('applyBtn');
@@ -141,7 +147,7 @@ function cleanLoaded(raw){
 async function loadSchedule(){
   try{
     const res=await fetch('/data/schedule.json?ts='+Date.now(),{cache:'no-store'});
-    if(res.ok){data=cleanLoaded(await res.json());}
+    if(res.ok){const raw=await res.json(); adminPasswordHash=raw.adminPasswordHash||''; data=cleanLoaded(raw);}
   }catch(e){
     try{const saved=localStorage.getItem('tskamScheduleDataFinal');if(saved)data=cleanLoaded(JSON.parse(saved));}catch(_e){}
   }
@@ -174,10 +180,10 @@ async function saveToServer(password,newPassword=''){
 }
 todaySchedule.onclick=()=>openModal({type:'todaySchedule'});todayMention.onclick=()=>openModal({type:'todayMention'});cancelBtn.onclick=closeModal;applyBtn.onclick=()=>applyModal(false);clearBtn.onclick=()=>applyModal(true);modalBack.onclick=e=>{if(e.target===modalBack)closeModal()};
 prevBtn.onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);renderCalendar()};nextBtn.onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);renderCalendar()};todayBtn.onclick=()=>{view=new Date(todayReal.getFullYear(),todayReal.getMonth(),1);selectedDate=dateKey(todayReal.getFullYear(),todayReal.getMonth()+1,todayReal.getDate());renderAll()};
-saveBtn.onclick=()=>{passwordBack.style.display='flex';adminPassword.value='';setTimeout(()=>adminPassword.focus(),50)};passwordCancelBtn.onclick=()=>passwordBack.style.display='none';passwordBack.onclick=e=>{if(e.target===passwordBack)passwordBack.style.display='none'};async function doProtectedSave(){try{passwordSaveBtn.disabled=true;passwordSaveBtn.textContent='저장 중';await saveToServer(adminPassword.value);passwordBack.style.display='none';showToast('저장 완료')}catch(e){showToast(e.message)}finally{passwordSaveBtn.disabled=false;passwordSaveBtn.textContent='저장'}}passwordSaveBtn.onclick=doProtectedSave;adminPassword.addEventListener('keydown',e=>{if(e.key==='Enter')doProtectedSave()});
+saveBtn.onclick=()=>{passwordBack.style.display='flex';adminPassword.value='';setTimeout(()=>adminPassword.focus(),50)};passwordCancelBtn.onclick=()=>passwordBack.style.display='none';passwordBack.onclick=e=>{if(e.target===passwordBack)passwordBack.style.display='none'};async function doProtectedSave(){try{passwordSaveBtn.disabled=true;passwordSaveBtn.textContent='확인 중';if(adminPasswordHash){const inputHash=await sha256Client(adminPassword.value);if(inputHash!==adminPasswordHash){showToast('비밀번호가 틀렸습니다.');return}}passwordSaveBtn.textContent='저장 중';const result=await saveToServer(adminPassword.value);if(result.adminPasswordHash)adminPasswordHash=result.adminPasswordHash;passwordBack.style.display='none';showToast('저장 완료')}catch(e){showToast(e.message)}finally{passwordSaveBtn.disabled=false;passwordSaveBtn.textContent='저장'}}passwordSaveBtn.onclick=doProtectedSave;adminPassword.addEventListener('keydown',e=>{if(e.key==='Enter')doProtectedSave()});
 changePasswordBtn.onclick=()=>{changePasswordBack.style.display='flex';currentPassword.value='';newPassword.value='';newPasswordConfirm.value='';setTimeout(()=>currentPassword.focus(),50)};
 changePasswordCancelBtn.onclick=()=>changePasswordBack.style.display='none';changePasswordBack.onclick=e=>{if(e.target===changePasswordBack)changePasswordBack.style.display='none'};
-async function doChangePassword(){const cur=currentPassword.value;const next=newPassword.value.trim();const confirm=newPasswordConfirm.value.trim();if(!next){showToast('새 비밀번호를 입력하세요');return}if(next.length<4){showToast('비밀번호는 4자 이상');return}if(next!==confirm){showToast('새 비밀번호가 일치하지 않습니다');return}try{changePasswordApplyBtn.disabled=true;changePasswordApplyBtn.textContent='변경 중';await saveToServer(cur,next);changePasswordBack.style.display='none';showToast('비밀번호 변경 완료')}catch(e){showToast(e.message)}finally{changePasswordApplyBtn.disabled=false;changePasswordApplyBtn.textContent='변경'}}
+async function doChangePassword(){const cur=currentPassword.value;const next=newPassword.value.trim();const confirm=newPasswordConfirm.value.trim();if(!next){showToast('새 비밀번호를 입력하세요');return}if(next.length<4){showToast('비밀번호는 4자 이상');return}if(next!==confirm){showToast('새 비밀번호가 일치하지 않습니다');return}try{changePasswordApplyBtn.disabled=true;changePasswordApplyBtn.textContent='확인 중';if(adminPasswordHash){const inputHash=await sha256Client(cur);if(inputHash!==adminPasswordHash){showToast('현재 비밀번호가 틀렸습니다.');return}}changePasswordApplyBtn.textContent='변경 중';const result=await saveToServer(cur,next);if(result.adminPasswordHash)adminPasswordHash=result.adminPasswordHash;changePasswordBack.style.display='none';showToast('비밀번호 변경 완료')}catch(e){showToast(e.message)}finally{changePasswordApplyBtn.disabled=false;changePasswordApplyBtn.textContent='변경'}}
 changePasswordApplyBtn.onclick=doChangePassword;[currentPassword,newPassword,newPasswordConfirm].forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter')doChangePassword()}));
 loadSchedule();
 </script>
