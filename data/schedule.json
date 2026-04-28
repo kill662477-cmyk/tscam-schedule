@@ -1,6 +1,6 @@
 {
   "adminPasswordHash": "5c06e46c5e47cfacad16ce1e37f17c09fdbc7072c567613e0b8112173f688a65",
-  "updatedAt": "2026-04-28T10:54:14.208Z",
+  "updatedAt": "2026-04-28T20:54:47.332Z",
   "data": {
     "weekly": {
       "kim": [
@@ -9,7 +9,7 @@
         "ASL\n중계",
         "M.T",
         "M.T",
-        "언급노",
+        "",
         ""
       ],
       "lee": [
@@ -18,13 +18,13 @@
         "ASL\n중계",
         "M.T",
         "M.T",
-        "언급노",
+        "",
         ""
       ]
     },
     "today": {
-      "schedule": "16시30분 두두 ASL응원 전 야방\n\n18시 유스 영입발표 낭니Z\n\n19시 ASL 중계방송 신상문 VS 윤수철",
-      "mention": "햇살(장기)\n진땅콩"
+      "schedule": "14시 츠캄엠티",
+      "mention": "햇살(장기)"
     },
     "monthly": {
       "2026-04-01": "ASL 중계",
