@@ -172,7 +172,7 @@ function applyModal(clear=false){if(!editCtx)return;const v=clear?'':modalText.v
 async function saveToServer(password,newPassword=''){
   const payload={password,data};
   if(newPassword)payload.newPassword=newPassword;
-  const res=await fetch('/.netlify/functions/save-schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const res=await fetch('/api/save-schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   const json=await res.json().catch(()=>({}));
   if(!res.ok) throw new Error(json.error||'저장 실패');
   localStorage.setItem('tskamScheduleDataFinal',JSON.stringify(data));
