@@ -58,6 +58,29 @@ html,body{max-width:100%;overflow-x:hidden}
 @media(max-width:380px){
   .wrap{padding-left:6px;padding-right:6px}.hero{padding-left:12px;padding-right:12px}.hero-inner{grid-template-columns:46px minmax(0,1fr);gap:9px;padding-right:48px}.logo{width:46px;height:46px}.hero h1{font-size:22px}.month-line{font-size:22px}.nav button{min-width:52px;font-size:11px;padding:8px 6px}.card{padding:16px 12px}.card h2{font-size:23px}.person{padding:12px}.week-days{gap:4px}.daybox{height:70px;padding:7px 1px}.dow{font-size:10px}.day-text{font-size:10px}.calendar{gap:4px}.cal-day{height:72px;padding:5px 3px}.num{font-size:14px}.cal-text{font-size:9px;max-height:46px}
 }
+
+
+/* ===== 오늘의 일정 영역만: 글자 축소 금지 + 박스 높이 확대 ===== */
+.today-card .text-box{
+  height:auto !important;
+  min-height:170px !important;
+  overflow:hidden;
+}
+
+@media(max-width:640px){
+  .today-card .text-box{
+    height:auto !important;
+    min-height:140px !important;
+  }
+}
+
+@media(max-width:380px){
+  .today-card .text-box{
+    height:auto !important;
+    min-height:132px !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -174,7 +197,7 @@ function renderHeader(){const label=view.getFullYear()+"년 "+(view.getMonth()+1
 function renderWeekly(){weeklyGrid.innerHTML='';[['kim','김윤환'],['lee','이경민']].forEach(([id,name])=>{const p=document.createElement('div');p.className='person';p.innerHTML=`<div class="person-top"><div class="person-name">${name}</div></div><div class="week-days">${dows.map((d,i)=>{const cls=i===0?'sun':i===6?'sat':'';return `<div class="daybox" data-person="${id}" data-day="${i}"><div class="dow ${cls}">${d}</div><div class="day-text fit-text">${esc(data.weekly[id][i]||'')}</div></div>`}).join('')}</div>`;weeklyGrid.appendChild(p)});document.querySelectorAll('.daybox').forEach(el=>el.onclick=()=>openModal({type:'weekly',person:el.dataset.person,day:Number(el.dataset.day)}));}
 function renderToday(){todayDate.textContent=dot(selectedDate);todaySchedule.textContent=data.today.schedule||'등록된 일정 없음';todayMention.textContent=data.today.mention||'등록된 언급노(휴방) 없음'}
 function renderCalendar(){renderHeader();calendar.innerHTML='';const y=view.getFullYear(),m=view.getMonth()+1;const first=new Date(y,m-1,1).getDay();const last=new Date(y,m,0).getDate();for(let i=0;i<first;i++){const e=document.createElement('div');e.className='cal-day empty';calendar.appendChild(e)}for(let d=1;d<=last;d++){const k=dateKey(y,m,d);const dow=new Date(y,m-1,d).getDay();const numCls=isKoreanNationalDay(m,d,y)?'holiday':dow===0?'sun':dow===6?'sat':'';const el=document.createElement('div');el.className='cal-day'+(k===selectedDate?' selected':'');el.innerHTML=`<div class="num ${numCls}">${d}</div><div class="cal-text fit-text">${esc(data.monthly[k]||'')}</div>`;el.onclick=()=>{selectedDate=k;renderToday();renderCalendar();openModal({type:'monthly',date:k});};calendar.appendChild(el)}requestAnimationFrame(autoFitTexts)}
-function autoFitTexts(){document.querySelectorAll('.fit-text,.text-box').forEach(el=>{let base=el.classList.contains('cal-text')?14:el.classList.contains('day-text')?15:17;let min=8;if(window.matchMedia('(max-width:640px)').matches){base=el.classList.contains('cal-text')?9.5:el.classList.contains('day-text')?11:15;min=el.classList.contains('day-text')?7:8}let size=base;el.style.fontSize=size+'px';el.style.lineHeight=el.classList.contains('cal-text')?'1.18':el.classList.contains('day-text')?'1.13':'1.35';el.style.wordBreak=el.classList.contains('day-text')?'break-all':'keep-all';while((el.scrollHeight>el.clientHeight || el.scrollWidth>el.clientWidth) && size>min){size-=0.5;el.style.fontSize=size+'px';}if(el.classList.contains('day-text') && (el.scrollHeight>el.clientHeight || el.scrollWidth>el.clientWidth)){el.style.wordBreak='break-all';el.style.overflowWrap='anywhere';}})}
+function autoFitTexts(){document.querySelectorAll('.fit-text').forEach(el=>{let base=el.classList.contains('cal-text')?14:el.classList.contains('day-text')?15:17;let min=8;if(window.matchMedia('(max-width:640px)').matches){base=el.classList.contains('cal-text')?9.5:el.classList.contains('day-text')?11:15;min=el.classList.contains('day-text')?7:8}let size=base;el.style.fontSize=size+'px';el.style.lineHeight=el.classList.contains('cal-text')?'1.18':el.classList.contains('day-text')?'1.13':'1.35';el.style.wordBreak=el.classList.contains('day-text')?'break-all':'keep-all';while((el.scrollHeight>el.clientHeight || el.scrollWidth>el.clientWidth) && size>min){size-=0.5;el.style.fontSize=size+'px';}if(el.classList.contains('day-text') && (el.scrollHeight>el.clientHeight || el.scrollWidth>el.clientWidth)){el.style.wordBreak='break-all';el.style.overflowWrap='anywhere';}})}
 function renderAll(){renderWeekly();renderToday();renderCalendar();requestAnimationFrame(autoFitTexts)}
 function openModal(ctx){editCtx=ctx;let title='입력/수정',sub='',val='';if(ctx.type==='weekly'){const name=ctx.person==='kim'?'김윤환':'이경민';title='주간 스케줄 수정';sub=`${name} · ${dows[ctx.day]}요일`;val=data.weekly[ctx.person][ctx.day]||''}if(ctx.type==='todaySchedule'){title='오늘의 일정 수정';sub='오늘의 일정';val=data.today.schedule||''}if(ctx.type==='todayMention'){title='언급노(휴방) 수정';sub='언급노(휴방)';val=data.today.mention||''}if(ctx.type==='monthly'){title='월간 일정 수정';sub=dot(ctx.date);val=data.monthly[ctx.date]||''}modalTitle.textContent=title;modalSub.textContent=sub;modalText.value=val;modalBack.style.display='flex';setTimeout(()=>modalText.focus(),50)}
 function closeModal(){modalBack.style.display='none';editCtx=null}
