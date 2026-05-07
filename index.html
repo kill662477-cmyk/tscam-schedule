@@ -120,9 +120,9 @@ function cleanLoaded(raw){
 }
 async function loadSchedule(){
   try{
-    const res = await fetch('https://raw.githubusercontent.com/kill662477-cmyk/tscam-schedule/main/data/schedule.json?ts=' + Date.now(), {
+    const res = await fetch('./data/schedule.json?ts=' + Date.now(), {
   cache: 'no-store'
-});
+})
     if(res.ok){const raw=await res.json(); adminPasswordHash=raw.adminPasswordHash||''; data=cleanLoaded(raw);}
   }catch(e){
     try{const saved=localStorage.getItem('tskamScheduleDataFinal');if(saved)data=cleanLoaded(JSON.parse(saved));}catch(_e){}
