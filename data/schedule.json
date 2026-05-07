@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-07T21:46:40.722Z",
+  "adminPasswordHash": "5c06e46c5e47cfacad16ce1e37f17c09fdbc7072c567613e0b8112173f688a65",
   "data": {
     "weekly": {
       "kim": [
@@ -13,7 +13,7 @@
       ]
     },
     "today": {
-      "schedule": "이스코어 코치진 출전",
+      "schedule": "이스코어 코치진 출전ㅁㅁ",
       "mention": "햇살(장기)"
     },
     "monthly": {
