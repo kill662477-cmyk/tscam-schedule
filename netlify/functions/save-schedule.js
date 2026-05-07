@@ -4,7 +4,7 @@ function sha256(text) {
   return crypto.createHash("sha256").update(String(text || "")).digest("hex");
 }
 
-module.exports = async function handler(req, res) {
+exports.handler = async function(event, context) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
