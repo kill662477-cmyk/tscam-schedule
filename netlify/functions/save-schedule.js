@@ -3,11 +3,13 @@ const crypto = require('crypto');
 
 const {
   GITHUB_TOKEN,
-  GITHUB_OWNER,
-  GITHUB_REPO,
+  GITHUB_OWNER = 'kill662477-cmyk',
+  GITHUB_REPO = 'tscam-schedule',
   GITHUB_BRANCH = 'main',
   ADMIN_PASSWORD
 } = process.env;
+
+const FILE_PATH = 'data/schedule.json';
 
 function sha256(text = '') {
   return crypto.createHash('sha256').update(String(text)).digest('hex');
@@ -42,10 +44,9 @@ function githubRequest(path, method = 'GET', body = null) {
 
       res.on('end', () => {
         try {
-          const parsed = raw ? JSON.parse(raw) : {};
           resolve({
             status: res.statusCode,
-            data: parsed
+            data: raw ? JSON.parse(raw) : {}
           });
         } catch (e) {
           reject(e);
@@ -55,61 +56,92 @@ function githubRequest(path, method = 'GET', body = null) {
 
     req.on('error', reject);
 
-    if (data) {
-      req.write(data);
-    }
-
+    if (data) req.write(data);
     req.end();
   });
 }
 
-exports.handler = async function () {
-  const owner = 'kill662477-cmyk';
-  const repo = 'tscam-schedule';
-  const path = 'data/schedule.json';
-  const branch = 'main';
-
-  const token = process.env.GITHUB_TOKEN;
-
+exports.handler = async function (event) {
   try {
-    const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github+json',
-          'User-Agent': 'monstarz-schedule'
-        }
-      }
-    );
-
-    const json = await res.json();
-
-    if (!res.ok) {
+    if (!GITHUB_TOKEN) {
       return {
-        statusCode: res.status,
+        statusCode: 500,
+        body: JSON.stringify({ error: 'GITHUB_TOKEN 없음' })
+      };
+    }
+
+    const githubPath = `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}?ref=${GITHUB_BRANCH}`;
+
+    // 읽기: index.html loadSchedule()에서 호출
+    if (event.httpMethod === 'GET') {
+      const fileRes = await githubRequest(githubPath, 'GET');
+
+      if (fileRes.status < 200 || fileRes.status >= 300) {
+        return {
+          statusCode: fileRes.status,
+          body: JSON.stringify({
+            error: fileRes.data.message || 'GitHub read failed'
+          })
+        };
+      }
+
+      const content = Buffer.from(fileRes.data.content, 'base64').toString('utf8');
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store'
+        },
+        body: content
+      };
+    }
+
+    // 저장: 기존 저장 버튼에서 호출
+    if (event.httpMethod !== 'POST') {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ error: 'Method not allowed' })
+      };
+    }
+
+    const body = JSON.parse(event.body || '{}');
+    const password = String(body.password || '');
+    const newPassword = String(body.newPassword || '').trim();
+    const incomingData = body.data;
+
+    if (!incomingData) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: '저장할 데이터 없음' })
+      };
+    }
+
+    if (ADMIN_PASSWORD && password !== ADMIN_PASSWORD) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ error: '비밀번호가 틀렸습니다' })
+      };
+    }
+
+    const fileRes = await githubRequest(githubPath, 'GET');
+
+    if (fileRes.status < 200 || fileRes.status >= 300) {
+      return {
+        statusCode: fileRes.status,
         body: JSON.stringify({
-          error: json.message || 'GitHub read failed'
+          error: fileRes.data.message || 'GitHub file read failed'
         })
       };
     }
 
-    const content = Buffer.from(json.content, 'base64').toString('utf8');
+    const oldJsonText = Buffer.from(fileRes.data.content, 'base64').toString('utf8');
+    let oldJson = {};
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store'
-      },
-      body: content
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: err.message
-      })
-    };
-  }
-};
+    try {
+      oldJson = JSON.parse(oldJsonText);
+    } catch (_) {
+      oldJson = {};
+    }
+
+    const admin
