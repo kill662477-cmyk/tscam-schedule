@@ -121,7 +121,7 @@ function cleanLoaded(raw){
 
   async function loadSchedule(){
   const urls = [
-    '/.netlify/functions/get-schedule?ts=' + Date.now(),
+    '/.netlify/functions/save-schedule?ts=' + Date.now(),
     './data/schedule.json?ts=' + Date.now(),
     '/data/schedule.json?ts=' + Date.now()
   ];
