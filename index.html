@@ -118,21 +118,40 @@ function cleanLoaded(raw){
     monthly:src?.monthly && typeof src.monthly==='object'?src.monthly:{}
   };
 }
-async function loadSchedule(){
-  try{
-  const res = await fetch(
-  'https://raw.githubusercontent.com/kill662477-cmyk/tscam-schedule/main/data/schedule.json?ts=' + Date.now(),
-  {
-    cache: 'no-store'
-  }
-);
 
-    if(res.ok){const raw=await res.json(); adminPasswordHash=raw.adminPasswordHash||''; data=cleanLoaded(raw);}
-  }catch(e){
-    try{const saved=localStorage.getItem('tskamScheduleDataFinal');if(saved)data=cleanLoaded(JSON.parse(saved));}catch(_e){}
+  async function loadSchedule(){
+  const urls = [
+    'https://raw.githubusercontent.com/kill662477-cmyk/tscam-schedule/main/data/schedule.json?ts=' + Date.now(),
+    './data/schedule.json?ts=' + Date.now(),
+    '/data/schedule.json?ts=' + Date.now()
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+
+      if (!res.ok) continue;
+
+      const raw = await res.json();
+      adminPasswordHash = raw.adminPasswordHash || '';
+      data = cleanLoaded(raw);
+
+      console.log('schedule loaded from:', url);
+      renderAll();
+      return;
+    } catch (e) {
+      console.warn('schedule load failed:', url, e);
+    }
   }
+
+  try {
+    const saved = localStorage.getItem('tskamScheduleDataFinal');
+    if (saved) data = cleanLoaded(JSON.parse(saved));
+  } catch (_e) {}
+
   renderAll();
-}
+  }
+  
 function isKoreanNationalDay(m,d,y=view.getFullYear()){
   const md=`${pad(m)}-${pad(d)}`;
   const fixed=['01-01','03-01','05-05','06-06','07-17','08-15','10-03','10-09','12-25'];
