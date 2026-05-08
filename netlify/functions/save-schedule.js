@@ -63,103 +63,53 @@ function githubRequest(path, method = 'GET', body = null) {
   });
 }
 
-exports.handler = async function(event) {
+exports.handler = async function () {
+  const owner = 'kill662477-cmyk';
+  const repo = 'tscam-schedule';
+  const path = 'data/schedule.json';
+  const branch = 'main';
 
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({
-        error: 'Method not allowed'
-      })
-    };
-  }
+  const token = process.env.GITHUB_TOKEN;
 
   try {
-
-    const body = JSON.parse(event.body || '{}');
-
-    const password = body.password || '';
-    const newPassword = body.newPassword || '';
-    const data = body.data || {};
-
-    if (!ADMIN_PASSWORD) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({
-          error: 'ADMIN_PASSWORD 환경변수 없음'
-        })
-      };
-    }
-
-    if (password !== ADMIN_PASSWORD) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({
-          error: '비밀번호가 틀렸습니다.'
-        })
-      };
-    }
-
-    const adminPasswordHash = sha256(newPassword || password);
-
-    const finalJson = {
-      adminPasswordHash,
-      data
-    };
-
-    const filePath = 'data/schedule.json';
-
-    const getFile = await githubRequest(
-      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}`
-    );
-
-    let sha = '';
-
-    if (getFile.status === 200) {
-      sha = getFile.data.sha;
-    }
-
-    const content = Buffer
-      .from(JSON.stringify(finalJson, null, 2))
-      .toString('base64');
-
-    const commitResult = await githubRequest(
-      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`,
-      'PUT',
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
       {
-        message: 'Update schedule.json',
-        content,
-        sha,
-        branch: GITHUB_BRANCH
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'monstarz-schedule'
+        }
       }
     );
 
-    if (commitResult.status !== 200 && commitResult.status !== 201) {
+    const json = await res.json();
+
+    if (!res.ok) {
       return {
-        statusCode: 500,
+        statusCode: res.status,
         body: JSON.stringify({
-          error: 'GitHub 저장 실패',
-          detail: commitResult.data
+          error: json.message || 'GitHub read failed'
         })
       };
     }
 
+    const content = Buffer.from(json.content, 'base64').toString('utf8');
+
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        success: true,
-        adminPasswordHash
-      })
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store'
+      },
+      body: content
     };
-
-  } catch (error) {
-
+  } catch (err) {
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: error.message || '서버 오류'
+        error: err.message
       })
     };
-
   }
 };
