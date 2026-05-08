@@ -121,7 +121,7 @@ function cleanLoaded(raw){
 
   async function loadSchedule(){
   const urls = [
-    'https://raw.githubusercontent.com/kill662477-cmyk/tscam-schedule/main/data/schedule.json?ts=' + Date.now(),
+    '/.netlify/functions/get-schedule?ts=' + Date.now(),
     './data/schedule.json?ts=' + Date.now(),
     '/data/schedule.json?ts=' + Date.now()
   ];
