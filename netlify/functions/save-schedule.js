@@ -144,4 +144,59 @@ exports.handler = async function (event) {
       oldJson = {};
     }
 
-    const admin
+    const adminPasswordHash =
+  newPassword
+    ? sha256(newPassword)
+    : oldJson.adminPasswordHash || sha256(ADMIN_PASSWORD || password || '');
+
+const nextJson = {
+  adminPasswordHash,
+  data: incomingData
+};
+
+const encoded = Buffer.from(
+  JSON.stringify(nextJson, null, 2),
+  'utf8'
+).toString('base64');
+
+const updateRes = await githubRequest(
+  `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}`,
+  'PUT',
+  {
+    message: 'Update schedule.json',
+    content: encoded,
+    sha: fileRes.data.sha,
+    branch: GITHUB_BRANCH
+  }
+);
+
+if (updateRes.status < 200 || updateRes.status >= 300) {
+  return {
+    statusCode: updateRes.status,
+    body: JSON.stringify({
+      error: updateRes.data.message || 'GitHub update failed'
+    })
+  };
+}
+
+return {
+  statusCode: 200,
+  headers: {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store'
+  },
+  body: JSON.stringify({
+    ok: true,
+    adminPasswordHash
+  })
+};
+
+} catch (err) {
+  return {
+    statusCode: 500,
+    body: JSON.stringify({
+      error: err.message
+    })
+  };
+}
+};
