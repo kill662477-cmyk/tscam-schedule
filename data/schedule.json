@@ -3,18 +3,18 @@
   "data": {
     "weekly": {
       "kim": [
-        "K중만컵\nVSHM",
+        "K중만컵\nHM\nVS\n엠비대",
         "ASL\n중계",
-        "ASL\n중계",
-        "ASL\n중계",
-        "K중만컵\n중계",
-        "K중만컵\n중계\n마이너스\n경매",
-        "K중만컵\n중계"
+        "ASL\n중계?\n연습?",
+        "ASL\n플레이어",
+        "K중만컵\n신세계\nVS\n흑카데미",
+        "K중만컵\nJSA\nVS\nBGM",
+        ""
       ]
     },
     "today": {
-      "schedule": "K-중만컵\n케이대 VS 와플대",
-      "mention": "토마토"
+      "schedule": "K-중만컵\nHM VS 엠비대",
+      "mention": ""
     },
     "monthly": {
       "2026-04-01": "ASL 중계",
