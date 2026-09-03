@@ -1,4 +1,0 @@
-[build]
-  publish = "."
-  functions = "netlify/functions"
-  ignore = "changed=$(git diff --name-only $CACHED_COMMIT_REF $COMMIT_REF); if echo \"$changed\" | grep -qvE '^data/schedule\\.json$'; then exit 1; else exit 0; fi"

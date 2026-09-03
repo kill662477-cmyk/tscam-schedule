@@ -1,0 +1,69 @@
+name: shot
+
+# 저장 버튼이 data/schedule.json을 커밋하면 그 화면을 이미지로 굽는다.
+# 와고가 iframe 게시를 막아 페이지를 끼워넣을 수 없으므로, 게시글에는
+# 이 이미지 URL 하나만 넣어두면 저장할 때마다 알아서 갱신된다.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/schedule.json"
+      - "index.html"
+      - "tools/shot.mjs"
+  workflow_dispatch:
+
+concurrency:
+  group: shot
+  cancel-in-progress: true
+
+env:
+  SITE: https://calm-schedule.vercel.app
+
+jobs:
+  shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tools/package-lock.json
+
+      - name: 한글 폰트 설치
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+        with:
+          chrome-version: stable
+
+      - run: npm ci
+        working-directory: tools
+
+      - name: 스크린샷
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: node tools/shot.mjs --out=shot.png
+
+      - name: Vercel 배포
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx --yes vercel@latest deploy --prod --yes --token "${{ secrets.VERCEL_TOKEN }}"
+
+      - name: 배포 검증
+        run: |
+          for i in 1 2 3 4 5 6; do
+            sleep 10
+            hdr=$(curl -s -D /tmp/h -o /tmp/img "$SITE/shot.png"; tr -d '\r' < /tmp/h)
+            echo "$hdr" | grep -iE '^HTTP|^content-type|^content-length'
+            if echo "$hdr" | grep -qi 'content-type: image/png'; then
+              magic=$(head -c 4 /tmp/img | xxd -p)
+              [ "${magic:0:8}" = "89504e47" ] || { echo "PNG 시그니처 아님: $magic"; exit 1; }
+              echo "검증 통과"; exit 0
+            fi
+          done
+          echo "shot.png 를 가져오지 못함"; exit 1
