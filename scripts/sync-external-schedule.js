@@ -1,9 +1,9 @@
-// 외부 일정표(tscam-schedule, Netlify 배포) 동기화.
+// 외부 일정표(tscam-schedule, Vercel 배포) 동기화.
 //
-// 원본 편집은 계속 https://monumental-dolphin-3ac88f.netlify.app (= tscam-schedule 레포)에서
-// 하고, 이 스크립트는 그 레포의 data/schedule.json을 읽기 전용으로 가져와
+// 원본 편집은 https://calm-schedule.vercel.app 에서 하고(= tscam-schedule 레포,
+// 저장 버튼이 /api/save-schedule로 data/schedule.json을 커밋한다), 이 스크립트는
+// 그 레포의 data/schedule.json을 GitHub raw에서 읽기 전용으로 가져와
 // Supabase external_schedule_sync 테이블(단일 행)에 그대로 미러링한다.
-// tscam-schedule 레포/코드는 전혀 건드리지 않는다.
 //
 // adminPasswordHash 등 민감 필드는 절대 가져오지 않고 weekly/today/monthly만 동기화한다.
 
