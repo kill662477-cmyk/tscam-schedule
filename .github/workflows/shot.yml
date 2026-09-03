@@ -46,7 +46,9 @@ jobs:
       - name: 스크린샷
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
-        run: node tools/shot.mjs --out=shot.png
+        # 렌더 CSS 폭이 모바일 가독성을 좌우한다. 1200으로 찍으면 폰에서
+        # 30% 크기로 축소돼 글자가 안 읽힌다. 780이면 46%로 올라간다.
+        run: node tools/shot.mjs --out=shot.png --width=780
 
       - name: Vercel 배포
         env:
